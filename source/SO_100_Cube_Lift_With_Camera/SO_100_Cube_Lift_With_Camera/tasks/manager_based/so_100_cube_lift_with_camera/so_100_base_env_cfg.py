@@ -49,10 +49,10 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
     gripper_camera_visual = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper/Gripper_Camera",
         init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(0.0, 0, 0.04),
-            rot=(0.707, 0.707, 0, 0),
+            pos=(0.0, -0.035, 0.04),
+            rot=(0.707, 0.6, 0, 0),
         ),
-        spawn=UsdFileCfg(usd_path=f"{ISAAC_NUCLEUS_DIR}/Sensors/Sensing/SG2/H60YA/Camera_SG2_OX03CC_5200_GMSL2_H60YA.usd", scale=(0.25, 0.25, 0.25))
+        spawn=UsdFileCfg(usd_path=f"{ISAAC_NUCLEUS_DIR}/Sensors/Sensing/SG2/H60YA/Camera_SG2_OX03CC_5200_GMSL2_H60YA.usd", scale=(1, 1, 1))
     )
 
     # Table
@@ -278,7 +278,7 @@ class SO100LiftCameraEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the lifting environment."""
 
     # Scene settings
-    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=512, env_spacing=2.5)
+    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=4, env_spacing=2.5)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
