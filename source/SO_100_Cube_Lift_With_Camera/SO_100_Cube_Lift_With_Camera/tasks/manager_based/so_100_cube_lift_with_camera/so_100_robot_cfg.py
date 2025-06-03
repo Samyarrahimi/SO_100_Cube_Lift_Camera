@@ -98,4 +98,3 @@ SO100_CFG = ArticulationCfg(
     soft_joint_pos_limit_factor=1.0,
 )
 """Configuration of SO100 robot arm."""
-# Removed FRANKA_PANDA_HIGH_PD_CFG as it's not applicable

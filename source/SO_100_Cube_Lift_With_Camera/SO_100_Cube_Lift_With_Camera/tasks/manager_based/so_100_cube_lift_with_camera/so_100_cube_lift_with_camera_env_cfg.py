@@ -41,15 +41,13 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
         self.scene.robot = _robot_cfg
 
         self.scene.gripper_camera = CameraCfg(
-            prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper/front_cam",
+            prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper/Gripper_Camera/Camera_SG2_OX03CC_5200_GMSL2_H60YA",
             update_period=0.1,
             height=480,
             width=640,
             data_types=["rgb", "distance_to_image_plane"],
-            spawn=sim_utils.PinholeCameraCfg(
-                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
-            ),
-            offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.03), rot=(180.0, 0.0, 0.0, 0.0), convention="ros"),
+            offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(180.0, 0.0, 0.0, 0.0), convention="ros"),
+            spawn=None
         )
         
         # Set actions for the specific robot type (SO100)

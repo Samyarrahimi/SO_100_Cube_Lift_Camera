@@ -44,16 +44,7 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
     object: RigidObjectCfg | DeformableObjectCfg = MISSING
     # cube marker: will be populated by agent env cfg
     cube_marker: FrameTransformerCfg = MISSING
-
-    gripper_camera_visual = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper/Gripper_Camera",
-        init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(0.0, 0, 0.04),
-            rot=(0.707, 0.707, 0, 0),
-        ),
-        spawn=UsdFileCfg(usd_path=f"{ISAAC_NUCLEUS_DIR}/Sensors/Sensing/SG2/H60YA/Camera_SG2_OX03CC_5200_GMSL2_H60YA.usd", scale=(0.25, 0.25, 0.25))
-    )
-
+    # gripper camera: will be populated by agent env cfg
     gripper_camera: CameraCfg = MISSING
 
     # Table
@@ -62,14 +53,12 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
         init_state=AssetBaseCfg.InitialStateCfg(pos=(0.5, 0.0, 0.0), rot=(0.707, 0.0, 0.0, 0.707)),
         spawn=UsdFileCfg(usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Mounts/SeattleLabTable/table_instanceable.usd"),
     )
-
     # plane
     plane = AssetBaseCfg(
         prim_path="/World/GroundPlane",
         init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, -1.05)),
         spawn=GroundPlaneCfg(),
     )
-
     # lights
     light = AssetBaseCfg(
         prim_path="/World/light",
@@ -79,7 +68,6 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
 ##
 # MDP settings
 ##
-
 
 @configclass
 class CommandsCfg:
@@ -92,14 +80,13 @@ class CommandsCfg:
         debug_vis=False,
         ranges=mdp.UniformPoseCommandCfg.Ranges(
             pos_x=(0.4, 0.6), pos_y=(-0.25, 0.25), pos_z=(0.25, 0.5), roll=(0.0, 0.0), pitch=(0.0, 0.0), yaw=(0.0, 0.0)
-        ),
+        )
     )
 
 
 @configclass
 class ActionsCfg:
     """Action specifications for the MDP."""
-
     # will be set by agent env cfg
     arm_action: mdp.JointPositionActionCfg | mdp.DifferentialInverseKinematicsActionCfg = MISSING
     # gripper_action: mdp.JointPositionActionCfg = MISSING
@@ -109,11 +96,9 @@ class ActionsCfg:
 @configclass
 class ObservationsCfg:
     """Observation specifications for the MDP."""
-
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
-
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
@@ -133,18 +118,8 @@ class ObservationsCfg:
 @configclass
 class EventCfg:
     """Configuration for events."""
-
     reset_all = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
 
-    # reset_object_position = EventTerm(
-    #     func=mdp.reset_root_state_uniform,
-    #     mode="reset",
-    #     params={
-    #         "pose_range": {"x": (-0.1, 0.1), "y": (-0.25, 0.25), "z": (0.0, 0.0)},
-    #         "velocity_range": {},
-    #         "asset_cfg": SceneEntityCfg("object", body_names="Object"),
-    #     },
-    # )
 
 
 # @configclass
@@ -172,16 +147,12 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-
     # Reaching reward with lower weight
     reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.05}, weight=2)
-
     # Lifting reward with higher weight
     lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.02}, weight=25.0)
-
     # Action penalty to encourage smooth movements
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
-
     # Joint velocity penalty to prevent erratic movements
     joint_vel = RewTerm(
         func=mdp.joint_vel_l2,
@@ -193,13 +164,10 @@ class RewardsCfg:
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
-
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
-
     object_dropping = DoneTerm(
         func=mdp.root_height_below_minimum, params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("object")}
     )
-
     success = DoneTerm(
         func=mdp.object_reached_goal,
         params={"threshold": 0.06, "robot_cfg": SceneEntityCfg("robot"), "object_cfg": SceneEntityCfg("object")}
@@ -243,28 +211,24 @@ class TerminationsCfg:
 @configclass
 class CurriculumCfg:
 #     """Curriculum terms for the MDP."""
-
     # Stage 1: Focus on reaching
     # Start with higher reaching reward, then gradually decrease it
     reaching_reward = CurrTerm(
         func=mdp.modify_reward_weight, 
         params={"term_name": "reaching_object", "weight": 1.0, "num_steps": 6000}
     )
-
     # Stage 2: Transition to lifting
     # Start with lower lifting reward, gradually increase to encourage lifting behavior
     lifting_reward = CurrTerm(
         func=mdp.modify_reward_weight, 
         params={"term_name": "lifting_object", "weight": 35.0, "num_steps": 8000}
     )
-
-    # Stage 4: Stabilize the policy
+    # Stage 3: Stabilize the policy
     # Gradually increase action penalties to encourage smoother, more stable movements
     action_rate = CurrTerm(
         func=mdp.modify_reward_weight, 
         params={"term_name": "action_rate", "weight": -5e-4, "num_steps": 12000}
     )
-
     joint_vel = CurrTerm(
         func=mdp.modify_reward_weight, 
         params={"term_name": "joint_vel", "weight": -5e-4, "num_steps": 12000}
@@ -273,7 +237,6 @@ class CurriculumCfg:
 ##
 # Environment configuration
 ##
-
 
 @configclass
 class SO100LiftCameraEnvCfg(ManagerBasedRLEnvCfg):
