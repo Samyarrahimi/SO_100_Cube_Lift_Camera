@@ -17,7 +17,7 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.so_100_cube_lift_with_camera_env_cfg:So100CubeLiftWithCameraEnvCfg",
+        "env_cfg_entry_point": f"{__name__}.so_100_cube_lift_with_camera_env_cfg:SO100CubeLiftCameraEnvCfg",
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
     },
 )

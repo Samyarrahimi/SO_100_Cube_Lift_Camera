@@ -3,178 +3,170 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-import math
+import copy
+import dataclasses
 
-import isaaclab.sim as sim_utils
-from isaaclab.assets import ArticulationCfg, AssetBaseCfg
-from isaaclab.envs import ManagerBasedRLEnvCfg
-from isaaclab.managers import EventTermCfg as EventTerm
-from isaaclab.managers import ObservationGroupCfg as ObsGroup
-from isaaclab.managers import ObservationTermCfg as ObsTerm
+from isaaclab.assets import RigidObjectCfg, ArticulationCfg, AssetBaseCfg
+from isaaclab.sensors import FrameTransformerCfg, CameraCfg
+from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
+from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg
+from isaaclab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
+from isaaclab.utils import configclass
+from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
+import isaaclab.sim as sim_utils  # For the debug visualization
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.managers import TerminationTermCfg as DoneTerm
-from isaaclab.scene import InteractiveSceneCfg
-from isaaclab.utils import configclass
+from isaaclab_tasks.manager_based.manipulation.lift import mdp
 
-from . import mdp
+from .so_100_base_env_cfg import SO100LiftCameraEnvCfg
+from .so_100_robot_cfg import SO100_CFG  # isort: skip
 
 ##
 # Pre-defined configs
 ##
-
-from isaaclab_assets.robots.cartpole import CARTPOLE_CFG  # isort:skip
-
-
-##
-# Scene definition
-##
+from isaaclab.markers.config import FRAME_MARKER_CFG  # isort: skip
+# from .SO100 import SO100_CFG  # Corrected import # isort: skip
 
 
 @configclass
-class So100CubeLiftWithCameraSceneCfg(InteractiveSceneCfg):
-    """Configuration for a cart-pole scene."""
+class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
+    def __post_init__(self):
+        # post init of parent
+        super().__post_init__()
 
-    # ground plane
-    ground = AssetBaseCfg(
-        prim_path="/World/ground",
-        spawn=sim_utils.GroundPlaneCfg(size=(100.0, 100.0)),
-    )
+        # Set SO100 as robot
+        _robot_cfg = dataclasses.replace(SO100_CFG, prim_path="{ENV_REGEX_NS}/Robot")
+        # Set initial rotation if needed
+        if _robot_cfg.init_state is None:
+            _robot_cfg.init_state = ArticulationCfg.InitialStateCfg()
+        _robot_cfg.init_state = dataclasses.replace(_robot_cfg.init_state, rot=(0.7071068, 0.0, 0.0, 0.7071068))
+        self.scene.robot = _robot_cfg
 
-    # robot
-    robot: ArticulationCfg = CARTPOLE_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.gripper_camera = CameraCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper/front_cam",
+            update_period=0.1,
+            height=480,
+            width=640,
+            data_types=["rgb", "distance_to_image_plane"],
+            spawn=sim_utils.PinholeCameraCfg(
+                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+            ),
+            offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.03), rot=(180.0, 0.0, 0.0, 0.0), convention="ros"),
+        )
 
-    # lights
-    dome_light = AssetBaseCfg(
-        prim_path="/World/DomeLight",
-        spawn=sim_utils.DomeLightCfg(color=(0.9, 0.9, 0.9), intensity=500.0),
-    )
+        # Set actions for the specific robot type (SO100)
+        self.actions.arm_action = mdp.JointPositionActionCfg(
+            asset_name="robot",
+            joint_names=["Shoulder_Rotation", "Shoulder_Pitch", "Elbow", "Wrist_Pitch", "Wrist_Roll"],
+            scale=0.5,
+            use_default_offset=True
+        )
+        
+        # self.actions.gripper_action = mdp.JointPositionActionCfg(
+        #     asset_name="robot",
+        #     joint_names=["Gripper"],
+        #     scale=2,
+        #     use_default_offset=True
+        # )
 
+        # Set gripper action with wider range for better visibility
+        self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
+            asset_name="robot",
+            joint_names=["Gripper"],
+            open_command_expr={"Gripper": 0.5},  # Fully open
+            close_command_expr={"Gripper": 0.0}  # Fully closed
+        )
+        
+        # Set the body name for the end effector
+        self.commands.object_pose.body_name = "Fixed_Gripper"
+        # Disable debug visualization for the target pose command
+        self.commands.object_pose.debug_vis = False
 
-##
-# MDP settings
-##
+        # Set Cube as object
+        self.scene.object = RigidObjectCfg(
+            prim_path="{ENV_REGEX_NS}/Object",
+            init_state=RigidObjectCfg.InitialStateCfg(pos=(0.2, 0.0, 0.015), rot=(1.0, 0.0, 0.0, 0.0)),
+            spawn=UsdFileCfg(
+                usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
+                scale=(0.3, 0.3, 0.3),
+                rigid_props=RigidBodyPropertiesCfg(
+                    solver_position_iteration_count=16,
+                    solver_velocity_iteration_count=1,
+                    max_angular_velocity=1000.0,
+                    max_linear_velocity=1000.0,
+                    max_depenetration_velocity=5.0,
+                    disable_gravity=False,
+                ),
+            ),
+        )
+
+        # Configure end-effector marker
+        marker_cfg = copy.deepcopy(FRAME_MARKER_CFG)
+        # Properly replace the frame marker configuration
+        marker_cfg.markers = {
+            "frame": sim_utils.UsdFileCfg(
+                usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/UIElements/frame_prim.usd",
+                scale=(0.05, 0.05, 0.05),
+            )
+        }
+        marker_cfg.prim_path = "/Visuals/FrameTransformer"
+        
+        # Updated FrameTransformerCfg for alternate USD structure
+        self.scene.ee_frame = FrameTransformerCfg(
+            # Original path in comments for reference
+            # prim_path="{ENV_REGEX_NS}/Robot/SO_100/SO_5DOF_ARM100_05d_SLDASM/Base",
+            # Updated path for the new USD structure
+            prim_path="{ENV_REGEX_NS}/Robot/Base",
+            debug_vis=True,  # Enable visualization
+            visualizer_cfg=marker_cfg,
+            target_frames=[
+                FrameTransformerCfg.FrameCfg(
+                    # Original path in comments for reference
+                    # prim_path="{ENV_REGEX_NS}/Robot/SO_100/SO_5DOF_ARM100_05d_SLDASM/Fixed_Gripper",
+                    # Updated path for the new USD structure
+                    prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper",
+                    name="end_effector",
+                    offset=OffsetCfg(
+                        pos=(0.01, -0.0, 0.1),
+                    ),
+                ),
+            ],
+        )
+
+        # Configure cube marker with different color and path
+        cube_marker_cfg = copy.deepcopy(FRAME_MARKER_CFG)
+        cube_marker_cfg.markers = {
+            "frame": sim_utils.UsdFileCfg(
+                usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/UIElements/frame_prim.usd",
+                scale=(0.05, 0.05, 0.05),
+                visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0)),
+            )
+        }
+        cube_marker_cfg.prim_path = "/Visuals/CubeFrameMarker"
+        
+        self.scene.cube_marker = FrameTransformerCfg(
+            prim_path="{ENV_REGEX_NS}/Object",
+            debug_vis=True,
+            visualizer_cfg=cube_marker_cfg,
+            target_frames=[
+                FrameTransformerCfg.FrameCfg(
+                    prim_path="{ENV_REGEX_NS}/Object",
+                    name="cube",
+                    offset=OffsetCfg(
+                        pos=(0.0, 0.0, 0.0),
+                    ),
+                ),
+            ],
+        )
 
 
 @configclass
-class ActionsCfg:
-    """Action specifications for the MDP."""
-
-    joint_effort = mdp.JointEffortActionCfg(asset_name="robot", joint_names=["slider_to_cart"], scale=100.0)
-
-
-@configclass
-class ObservationsCfg:
-    """Observation specifications for the MDP."""
-
-    @configclass
-    class PolicyCfg(ObsGroup):
-        """Observations for policy group."""
-
-        # observation terms (order preserved)
-        joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel)
-        joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel)
-
-        def __post_init__(self) -> None:
-            self.enable_corruption = False
-            self.concatenate_terms = True
-
-    # observation groups
-    policy: PolicyCfg = PolicyCfg()
-
-
-@configclass
-class EventCfg:
-    """Configuration for events."""
-
-    # reset
-    reset_cart_position = EventTerm(
-        func=mdp.reset_joints_by_offset,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=["slider_to_cart"]),
-            "position_range": (-1.0, 1.0),
-            "velocity_range": (-0.5, 0.5),
-        },
-    )
-
-    reset_pole_position = EventTerm(
-        func=mdp.reset_joints_by_offset,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=["cart_to_pole"]),
-            "position_range": (-0.25 * math.pi, 0.25 * math.pi),
-            "velocity_range": (-0.25 * math.pi, 0.25 * math.pi),
-        },
-    )
-
-
-@configclass
-class RewardsCfg:
-    """Reward terms for the MDP."""
-
-    # (1) Constant running reward
-    alive = RewTerm(func=mdp.is_alive, weight=1.0)
-    # (2) Failure penalty
-    terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
-    # (3) Primary task: keep pole upright
-    pole_pos = RewTerm(
-        func=mdp.joint_pos_target_l2,
-        weight=-1.0,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["cart_to_pole"]), "target": 0.0},
-    )
-    # (4) Shaping tasks: lower cart velocity
-    cart_vel = RewTerm(
-        func=mdp.joint_vel_l1,
-        weight=-0.01,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["slider_to_cart"])},
-    )
-    # (5) Shaping tasks: lower pole angular velocity
-    pole_vel = RewTerm(
-        func=mdp.joint_vel_l1,
-        weight=-0.005,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["cart_to_pole"])},
-    )
-
-
-@configclass
-class TerminationsCfg:
-    """Termination terms for the MDP."""
-
-    # (1) Time out
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    # (2) Cart out of bounds
-    cart_out_of_bounds = DoneTerm(
-        func=mdp.joint_pos_out_of_manual_limit,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["slider_to_cart"]), "bounds": (-3.0, 3.0)},
-    )
-
-
-##
-# Environment configuration
-##
-
-
-@configclass
-class So100CubeLiftWithCameraEnvCfg(ManagerBasedRLEnvCfg):
-    # Scene settings
-    scene: So100CubeLiftWithCameraSceneCfg = So100CubeLiftWithCameraSceneCfg(num_envs=4096, env_spacing=4.0)
-    # Basic settings
-    observations: ObservationsCfg = ObservationsCfg()
-    actions: ActionsCfg = ActionsCfg()
-    events: EventCfg = EventCfg()
-    # MDP settings
-    rewards: RewardsCfg = RewardsCfg()
-    terminations: TerminationsCfg = TerminationsCfg()
-
-    # Post initialization
-    def __post_init__(self) -> None:
-        """Post initialization."""
-        # general settings
-        self.decimation = 2
-        self.episode_length_s = 5
-        # viewer settings
-        self.viewer.eye = (8.0, 0.0, 5.0)
-        # simulation settings
-        self.sim.dt = 1 / 120
-        self.sim.render_interval = self.decimation
+class SO100CubeLiftCameraEnvCfg_PLAY(SO100CubeLiftCameraEnvCfg):
+    def __post_init__(self):
+        # post init of parent
+        super().__post_init__()
+        # make a smaller scene for play
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        # disable randomization for play
+        self.observations.policy.enable_corruption = False
