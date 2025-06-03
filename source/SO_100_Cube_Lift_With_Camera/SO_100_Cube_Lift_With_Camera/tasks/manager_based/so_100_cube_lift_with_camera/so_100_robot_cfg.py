@@ -15,7 +15,7 @@ from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets.articulation import ArticulationCfg
 
 _THIS_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SO100_USD_PATH = os.path.join(_THIS_SCRIPT_DIR, "asset", "SO_5DOF_ARM100.usd")
+SO100_USD_PATH = os.path.join(_THIS_SCRIPT_DIR, "asset", "SO_5DOF_ARM100_WITH_CAMERA.usd")
 
 SO100_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(

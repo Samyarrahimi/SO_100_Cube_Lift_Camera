@@ -6,7 +6,7 @@
 import copy
 import dataclasses
 
-from isaaclab.assets import RigidObjectCfg, ArticulationCfg, AssetBaseCfg
+from isaaclab.assets import RigidObjectCfg, ArticulationCfg
 from isaaclab.sensors import FrameTransformerCfg, CameraCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg
@@ -14,8 +14,6 @@ from isaaclab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 import isaaclab.sim as sim_utils  # For the debug visualization
-from isaaclab.managers import RewardTermCfg as RewTerm
-from isaaclab.managers import SceneEntityCfg
 from isaaclab_tasks.manager_based.manipulation.lift import mdp
 
 from .so_100_base_env_cfg import SO100LiftCameraEnvCfg
@@ -53,7 +51,7 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
             ),
             offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.03), rot=(180.0, 0.0, 0.0, 0.0), convention="ros"),
         )
-
+        
         # Set actions for the specific robot type (SO100)
         self.actions.arm_action = mdp.JointPositionActionCfg(
             asset_name="robot",

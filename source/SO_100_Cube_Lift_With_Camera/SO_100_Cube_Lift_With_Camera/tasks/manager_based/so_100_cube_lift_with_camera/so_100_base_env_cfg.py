@@ -8,6 +8,7 @@ from dataclasses import MISSING
 import isaaclab.sim as sim_utils
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg, DeformableObjectCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
+from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import CurriculumTermCfg as CurrTerm
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
@@ -44,16 +45,16 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
     # cube marker: will be populated by agent env cfg
     cube_marker: FrameTransformerCfg = MISSING
 
-    gripper_camera: CameraCfg = MISSING
-
     gripper_camera_visual = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper/Gripper_Camera",
         init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(0.0, -0.035, 0.04),
-            rot=(0.707, 0.6, 0, 0),
+            pos=(0.0, 0, 0.04),
+            rot=(0.707, 0.707, 0, 0),
         ),
-        spawn=UsdFileCfg(usd_path=f"{ISAAC_NUCLEUS_DIR}/Sensors/Sensing/SG2/H60YA/Camera_SG2_OX03CC_5200_GMSL2_H60YA.usd", scale=(1, 1, 1))
+        spawn=UsdFileCfg(usd_path=f"{ISAAC_NUCLEUS_DIR}/Sensors/Sensing/SG2/H60YA/Camera_SG2_OX03CC_5200_GMSL2_H60YA.usd", scale=(0.25, 0.25, 0.25))
     )
+
+    gripper_camera: CameraCfg = MISSING
 
     # Table
     table = AssetBaseCfg(
@@ -74,7 +75,6 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
         prim_path="/World/light",
         spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
     )
-
 
 ##
 # MDP settings
@@ -119,10 +119,12 @@ class ObservationsCfg:
         object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
         target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
         actions = ObsTerm(func=mdp.last_action)
+        camera_rgb = ObsTerm(func=mdp.image, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"rgb"})
+        camera_depth = ObsTerm(func=mdp.image, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"distance_to_image_plane"})
 
         def __post_init__(self):
             self.enable_corruption = True
-            self.concatenate_terms = True
+            self.concatenate_terms = False
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
