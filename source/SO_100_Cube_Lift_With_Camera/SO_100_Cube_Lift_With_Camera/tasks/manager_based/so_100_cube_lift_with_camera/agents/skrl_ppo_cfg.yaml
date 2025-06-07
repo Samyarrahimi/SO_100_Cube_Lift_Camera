@@ -13,10 +13,18 @@ models:
     max_log_std: 2.0
     initial_log_std: 0.0
     network:
-      - name: net
-        input: STATES
-        layers: [256, 128, 64]
-        activations: elu
+    - name: features_extractor
+      input: permute(STATES["camera_rgb"], (0, 3, 1, 2)) # TODO: NEED TO PERMUTE IF USING TORCH
+      layers:
+        - conv2d: {out_channels: 32, kernel_size: 8, stride: 4, padding: 0}
+        - conv2d: {out_channels: 64, kernel_size: 4, stride: 2, padding: 0}
+        - conv2d: {out_channels: 64, kernel_size: 3, stride: 1, padding: 0}
+        - flatten
+      activations: relu
+    - name: net
+      input: features_extractor
+      layers: [256, 128, 64]
+      activations: elu
     output: ACTIONS
   value:  # see deterministic_model parameters
     class: DeterministicMixin
@@ -66,8 +74,8 @@ agent:
   time_limit_bootstrap: False
   # logging and checkpoint
   experiment:
-    directory: "SO_100_Cube_Lift"
-    experiment_name: "SO_100_Cube_lift" 
+    directory: "SO_100_Cube_Lift_With_Camera"
+    experiment_name: "SO_100_Cube_lift_camera" 
     write_interval: auto
     checkpoint_interval: auto
 
