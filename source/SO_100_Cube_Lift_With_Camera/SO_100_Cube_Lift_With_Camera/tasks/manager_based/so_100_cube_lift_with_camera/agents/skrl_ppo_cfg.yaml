@@ -30,12 +30,19 @@ models:
     class: DeterministicMixin
     clip_actions: False
     network:
-      - name: net
-        input: STATES
-        layers: [256, 128, 64]
-        activations: elu
+    - name: features_extractor
+      input: permute(STATES["camera_rgb"], (0, 3, 1, 2)) # TODO: NEED TO PERMUTE IF USING TORCH
+      layers:
+        - conv2d: {out_channels: 32, kernel_size: 8, stride: 4, padding: 0}
+        - conv2d: {out_channels: 64, kernel_size: 4, stride: 2, padding: 0}
+        - conv2d: {out_channels: 64, kernel_size: 3, stride: 1, padding: 0}
+        - flatten
+      activations: relu
+    - name: net
+      input: features_extractor
+      layers: [256, 128, 64]
+      activations: elu
     output: ONE
-
 
 # Rollout memory
 # https://skrl.readthedocs.io/en/latest/api/memories/random.html
@@ -84,5 +91,5 @@ agent:
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
   class: SequentialTrainer
-  timesteps: 180000
+  timesteps: 120000
   environment_info: log
