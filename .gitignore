@@ -55,9 +55,7 @@ _build
 
 # RL-Games
 **/runs/*
-**/logs/skrl/SO_100_Cube_Lift_With_Camera/*/params
-**/logs/skrl/SO_100_Cube_Lift_With_Camera/*/videos
-**/logs/skrl/SO_100_Cube_Lift_With_Camera/*/events*
+**/logs/*
 **/recordings/*
 
 # Pre-Trained Checkpoints

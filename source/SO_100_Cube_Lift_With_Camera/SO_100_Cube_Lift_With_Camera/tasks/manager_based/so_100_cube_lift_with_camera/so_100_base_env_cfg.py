@@ -100,11 +100,11 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
-        # joint_pos = ObsTerm(func=mdp.joint_pos_rel)
-        # joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         # object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
         # target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
-        # actions = ObsTerm(func=mdp.last_action)
+        actions = ObsTerm(func=mdp.last_action)
     
         #robot_state = torch.cat([joint_pos, joint_vel, actions], dim=-1)
         camera_rgb = ObsTerm(func=mdp.image, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"rgb"})
@@ -261,7 +261,7 @@ class SO100LiftCameraEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 2
-        self.episode_length_s = 5.0
+        self.episode_length_s = 4.0
         # simulation settings
         self.sim.dt = 0.01  # 100Hz
         self.sim.render_interval = self.decimation
@@ -273,7 +273,7 @@ class SO100LiftCameraEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physx.friction_correlation_distance = 0.00625
         
         # Configure camera for closer view during video recording
-        self.viewer.eye = (1.0, 1.0, 0.8)
-        self.viewer.lookat = (0.5, 0.0, 0.2)
+        self.viewer.eye = (2.8, -1.2, 0.7)
+        self.viewer.lookat = (-30, 25, 0.1)
         self.viewer.origin_type = "env"
         self.viewer.env_index = 0

@@ -42,10 +42,10 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
 
         self.scene.gripper_camera = CameraCfg(
             prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper/Gripper_Camera/Camera_SG2_OX03CC_5200_GMSL2_H60YA",
-            update_period=0.05,
+            update_period=0.1,
             height=240,
             width=320,
-            data_types=["rgb", "distance_to_image_plane"],
+            data_types=["rgb"],
             offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(180.0, 0.0, 0.0, 0.0), convention="ros"),
             spawn=None
         )
