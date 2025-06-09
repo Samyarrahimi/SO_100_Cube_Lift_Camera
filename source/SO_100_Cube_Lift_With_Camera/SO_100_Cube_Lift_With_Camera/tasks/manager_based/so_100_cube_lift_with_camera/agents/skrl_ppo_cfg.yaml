@@ -22,7 +22,7 @@ models:
         - flatten
       activations: relu
     - name: net
-      input: features_extractor
+      input: concatenate([features_extractor, STATES["joint_pos"], STATES["joint_vel"], STATES["actions"]])
       layers: [256, 128, 64]
       activations: elu
     output: ACTIONS
@@ -39,7 +39,7 @@ models:
         - flatten
       activations: relu
     - name: net
-      input: features_extractor
+      input: concatenate([features_extractor, STATES["joint_pos"], STATES["joint_vel"], STATES["actions"]])
       layers: [256, 128, 64]
       activations: elu
     output: ONE
@@ -55,7 +55,7 @@ memory:
 # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html
 agent:
   class: PPO
-  rollouts: 24
+  rollouts: 16
   learning_epochs: 8
   mini_batches: 4
   discount_factor: 0.99
