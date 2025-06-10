@@ -57,13 +57,6 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
             scale=0.5,
             use_default_offset=True
         )
-        
-        # self.actions.gripper_action = mdp.JointPositionActionCfg(
-        #     asset_name="robot",
-        #     joint_names=["Gripper"],
-        #     scale=2,
-        #     use_default_offset=True
-        # )
 
         # Set gripper action with wider range for better visibility
         self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
@@ -113,8 +106,8 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
             # prim_path="{ENV_REGEX_NS}/Robot/SO_100/SO_5DOF_ARM100_05d_SLDASM/Base",
             # Updated path for the new USD structure
             prim_path="{ENV_REGEX_NS}/Robot/Base",
-            debug_vis=True,  # Enable visualization
             visualizer_cfg=marker_cfg,
+            debug_vis=False, # disable visualization
             target_frames=[
                 FrameTransformerCfg.FrameCfg(
                     # Original path in comments for reference
@@ -142,8 +135,8 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
         
         self.scene.cube_marker = FrameTransformerCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            debug_vis=True,
             visualizer_cfg=cube_marker_cfg,
+            debug_vis=False,  # disable visualization
             target_frames=[
                 FrameTransformerCfg.FrameCfg(
                     prim_path="{ENV_REGEX_NS}/Object",
