@@ -100,11 +100,11 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+        #joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        #joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         # object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
         # target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
-        actions = ObsTerm(func=mdp.last_action)
+        #actions = ObsTerm(func=mdp.last_action)
     
         #robot_state = torch.cat([joint_pos, joint_vel, actions], dim=-1)
         camera_rgb = ObsTerm(func=mdp.image, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"rgb"})
@@ -216,16 +216,16 @@ class CurriculumCfg:
 #     """Curriculum terms for the MDP."""
     # Stage 1: Focus on reaching
     # Start with higher reaching reward, then gradually decrease it
-    reaching_reward = CurrTerm(
-        func=mdp.modify_reward_weight, 
-        params={"term_name": "reaching_object", "weight": 1.0, "num_steps": 6000}
-    )
-    # Stage 2: Transition to lifting
-    # Start with lower lifting reward, gradually increase to encourage lifting behavior
-    lifting_reward = CurrTerm(
-        func=mdp.modify_reward_weight, 
-        params={"term_name": "lifting_object", "weight": 35.0, "num_steps": 8000}
-    )
+    # reaching_reward = CurrTerm(
+    #     func=mdp.modify_reward_weight, 
+    #     params={"term_name": "reaching_object", "weight": 1.0, "num_steps": 6000}
+    # )
+    # # Stage 2: Transition to lifting
+    # # Start with lower lifting reward, gradually increase to encourage lifting behavior
+    # lifting_reward = CurrTerm(
+    #     func=mdp.modify_reward_weight, 
+    #     params={"term_name": "lifting_object", "weight": 35.0, "num_steps": 8000}
+    # )
     # Stage 3: Stabilize the policy
     # Gradually increase action penalties to encourage smoother, more stable movements
     action_rate = CurrTerm(

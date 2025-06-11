@@ -135,7 +135,6 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
         
         self.scene.cube_marker = FrameTransformerCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            debug_vis=False,
             visualizer_cfg=cube_marker_cfg,
             debug_vis=False,  # disable visualization
             target_frames=[
