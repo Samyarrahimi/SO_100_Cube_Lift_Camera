@@ -39,12 +39,12 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
             _robot_cfg.init_state = ArticulationCfg.InitialStateCfg()
         _robot_cfg.init_state = dataclasses.replace(_robot_cfg.init_state, rot=(0.7071068, 0.0, 0.0, 0.7071068))
         self.scene.robot = _robot_cfg
-
+        
         self.scene.gripper_camera = CameraCfg(
-            prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper/Gripper_Camera/Camera_SG2_OX03CC_5200_GMSL2_H60YA",
+            prim_path="{ENV_REGEX_NS}/Robot/Wrist_Pitch_Roll/Gripper_Camera/Camera_SG2_OX03CC_5200_GMSL2_H60YA",
             update_period=0.1,
-            height=240,
-            width=320,
+            height=144,
+            width=256,
             data_types=["rgb"],
             offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(180.0, 0.0, 0.0, 0.0), convention="ros"),
             spawn=None
@@ -135,6 +135,7 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
         
         self.scene.cube_marker = FrameTransformerCfg(
             prim_path="{ENV_REGEX_NS}/Object",
+            debug_vis=False,
             visualizer_cfg=cube_marker_cfg,
             debug_vis=False,  # disable visualization
             target_frames=[
