@@ -147,21 +147,49 @@ class EventCfg:
 #         weight=-1e-4,
 #         params={"asset_cfg": SceneEntityCfg("robot")},
 #     )
+# @configclass
+# class RewardsCfg:
+#     """Reward terms for the MDP."""
+#     # Reaching reward with lower weight
+#     reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.05}, weight=2)
+#     # Lifting reward with higher weight
+#     lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.02}, weight=25.0)
+#     # Action penalty to encourage smooth movements
+#     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
+#     # Joint velocity penalty to prevent erratic movements
+#     joint_vel = RewTerm(
+#         func=mdp.joint_vel_l2,
+#         weight=-1e-4,
+#         params={"asset_cfg": SceneEntityCfg("robot")},
+#     )
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    # Reaching reward with lower weight
-    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.05}, weight=2)
-    # Lifting reward with higher weight
-    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.02}, weight=25.0)
-    # Action penalty to encourage smooth movements
+
+    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
+
+    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.04}, weight=15.0)
+
+    object_goal_tracking = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.3, "minimal_height": 0.04, "command_name": "object_pose"},
+        weight=16.0,
+    )
+
+    object_goal_tracking_fine_grained = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.05, "minimal_height": 0.04, "command_name": "object_pose"},
+        weight=5.0,
+    )
+
+    # action penalty
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
-    # Joint velocity penalty to prevent erratic movements
+
     joint_vel = RewTerm(
         func=mdp.joint_vel_l2,
         weight=-1e-4,
         params={"asset_cfg": SceneEntityCfg("robot")},
-    )
+    )   
 
 
 @configclass
@@ -171,11 +199,6 @@ class TerminationsCfg:
     object_dropping = DoneTerm(
         func=mdp.root_height_below_minimum, params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("object")}
     )
-    success = DoneTerm(
-        func=mdp.object_reached_goal,
-        params={"threshold": 0.06, "robot_cfg": SceneEntityCfg("robot"), "object_cfg": SceneEntityCfg("object")}
-    )
-
 
 # @configclass
 # class CurriculumCfg:
@@ -211,8 +234,8 @@ class TerminationsCfg:
 #         func=mdp.modify_reward_weight, 
 #         params={"term_name": "joint_vel", "weight": -5e-4, "num_steps": 30000}
 #     )
-@configclass
-class CurriculumCfg:
+# @configclass
+# class CurriculumCfg:
 #     """Curriculum terms for the MDP."""
     # Stage 1: Focus on reaching
     # Start with higher reaching reward, then gradually decrease it
@@ -228,13 +251,24 @@ class CurriculumCfg:
     # )
     # Stage 3: Stabilize the policy
     # Gradually increase action penalties to encourage smoother, more stable movements
+    # action_rate = CurrTerm(
+    #     func=mdp.modify_reward_weight, 
+    #     params={"term_name": "action_rate", "weight": -5e-4, "num_steps": 12000}
+    # )
+    # joint_vel = CurrTerm(
+    #     func=mdp.modify_reward_weight, 
+    #     params={"term_name": "joint_vel", "weight": -5e-4, "num_steps": 12000}
+    # )
+@configclass
+class CurriculumCfg:
+    """Curriculum terms for the MDP."""
+
     action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, 
-        params={"term_name": "action_rate", "weight": -5e-4, "num_steps": 12000}
+        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -1e-1, "num_steps": 10000}
     )
+
     joint_vel = CurrTerm(
-        func=mdp.modify_reward_weight, 
-        params={"term_name": "joint_vel", "weight": -5e-4, "num_steps": 12000}
+        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -1e-1, "num_steps": 10000}
     )
 
 ##

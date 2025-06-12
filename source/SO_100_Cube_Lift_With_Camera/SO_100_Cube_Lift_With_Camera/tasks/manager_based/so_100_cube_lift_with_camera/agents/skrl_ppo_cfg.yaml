@@ -18,6 +18,7 @@ models:
       layers:
         - conv2d: {out_channels: 32, kernel_size: 8, stride: 4, padding: 0}
         - conv2d: {out_channels: 64, kernel_size: 4, stride: 2, padding: 0}
+        - conv2d: {out_channels: 64, kernel_size: 4, stride: 2, padding: 0}
         - flatten
       activations: relu
     - name: net
@@ -33,6 +34,7 @@ models:
       input: permute(STATES["camera_rgb"], (0, 3, 1, 2)) # TODO: NEED TO PERMUTE IF USING TORCH
       layers:
         - conv2d: {out_channels: 32, kernel_size: 8, stride: 4, padding: 0}
+        - conv2d: {out_channels: 64, kernel_size: 4, stride: 2, padding: 0}
         - conv2d: {out_channels: 64, kernel_size: 4, stride: 2, padding: 0}
         - flatten
       activations: relu
