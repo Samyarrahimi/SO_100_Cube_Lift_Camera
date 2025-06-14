@@ -58,16 +58,16 @@ SO100_CFG = ArticulationCfg(
             joint_names_expr=["Shoulder_Pitch"],
             effort_limit=1.9,
             velocity_limit_sim=1.5,
-            stiffness=200.0,    # Slightly less than rotation, increase to 200.0 was 170.0
-            damping=80.0,  # increased to 80.0 was 60.0
+            stiffness=170.0,    # Slightly less than rotation,
+            damping=65.0,
         ),
         # Elbow moves: Lower arm, wrist, gripper (~0.38kg)
         "elbow": ImplicitActuatorCfg(
             joint_names_expr=["Elbow"],
             effort_limit=1.9,
             velocity_limit_sim=1.5,
-            stiffness=150.0,    # Reduced based on less mass, increased to 150.0 was 120.0
-            damping=60.0, # increase to 60 was 45
+            stiffness=120.0,    # Reduced based on less mass
+            damping=45.0,
         ),
         # Wrist pitch moves: Wrist and gripper (~0.24kg)
         "wrist_pitch": ImplicitActuatorCfg(
@@ -90,8 +90,8 @@ SO100_CFG = ArticulationCfg(
             joint_names_expr=["Gripper"],
             effort_limit=3.0,    # Increased from 1.9 to 2.5 for stronger grip, increased to 3.0
             velocity_limit_sim=1.5,
-            stiffness=100.0,     # Increased from 25.0 to 60.0 for more reliable closing, increase to 100.0
-            damping=30.0,       # Increased from 10.0 to 20.0 for stability, increase to 30.0
+            stiffness=60.0,     # Increased from 25.0 to 60.0 for more reliable closing
+            damping=20.0,       # Increased from 10.0 to 20.0 for stability
         ),
     },
     # Using default soft limits

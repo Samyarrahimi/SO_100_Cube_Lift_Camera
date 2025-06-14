@@ -100,13 +100,14 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
-        #joint_pos = ObsTerm(func=mdp.joint_pos_rel)
-        #joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         # object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
-        # target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
-        #actions = ObsTerm(func=mdp.last_action)
-    
-        #robot_state = torch.cat([joint_pos, joint_vel, actions], dim=-1)
+        target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
+        actions = ObsTerm(func=mdp.last_action)
+
+        ee_object_distance = ObsTerm(func=mdp.object_ee_distance, params={"std": 0.1})
+
         camera_rgb = ObsTerm(func=mdp.image, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"rgb"})
         #camera_depth = ObsTerm(func=mdp.image, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"distance_to_image_plane"})
 
@@ -121,9 +122,18 @@ class ObservationsCfg:
 @configclass
 class EventCfg:
     """Configuration for events."""
+
     reset_all = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
 
-
+    # reset_object_position = EventTerm(
+    #     func=mdp.reset_root_state_uniform,
+    #     mode="reset",
+    #     params={
+    #         "pose_range": {"x": (-0.1, 0.1), "y": (-0.25, 0.25), "z": (0.0, 0.0)},
+    #         "velocity_range": {},
+    #         "asset_cfg": SceneEntityCfg("object", body_names="Object"),
+    #     },
+    # )
 
 # @configclass
 # class RewardsCfg:
@@ -295,7 +305,7 @@ class SO100LiftCameraEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 2
-        self.episode_length_s = 4.0
+        self.episode_length_s = 5.0
         # simulation settings
         self.sim.dt = 0.01  # 100Hz
         self.sim.render_interval = self.decimation

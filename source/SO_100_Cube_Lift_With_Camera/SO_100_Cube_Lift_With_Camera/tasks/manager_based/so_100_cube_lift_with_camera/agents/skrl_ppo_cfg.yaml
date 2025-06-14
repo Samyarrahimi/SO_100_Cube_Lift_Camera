@@ -13,35 +13,37 @@ models:
     max_log_std: 2.0
     initial_log_std: 0.0
     network:
-    - name: features_extractor
-      input: permute(STATES["camera_rgb"], (0, 3, 1, 2)) # TODO: NEED TO PERMUTE IF USING TORCH
-      layers:
-        - conv2d: {out_channels: 32, kernel_size: 8, stride: 4, padding: 0}
-        - conv2d: {out_channels: 64, kernel_size: 4, stride: 2, padding: 0}
-        - conv2d: {out_channels: 64, kernel_size: 4, stride: 2, padding: 0}
-        - flatten
-      activations: relu
-    - name: net
-      input: features_extractor
-      layers: [256, 64]
-      activations: elu
+      - name: features_extractor
+        input: permute(STATES["camera_rgb"], (0, 3, 1, 2))
+        layers:
+          - conv2d: {out_channels: 16, kernel_size: 8, stride: 2}
+          - conv2d: {out_channels: 32, kernel_size: 4, stride: 2}
+          - conv2d: {out_channels: 64, kernel_size: 4, stride: 2}
+          - conv2d: {out_channels: 128, kernel_size: 4, stride: 2}
+          - conv2d: {out_channels: 256, kernel_size: 4, stride: 2}
+          - flatten
+        activations: relu
+      - name: position_distance
+        input: concatenate([STATES["target_object_position"], STATES["ee_object_distance"]])
+        layers: [128]
+        activations: elu
+      - name: net
+        input: concatenate([features_extractor, position_distance, STATES["joint_pos"], STATES["joint_vel"], STATES["actions"]])
+        layers: [512, 256, 128]
+        activations: elu
     output: ACTIONS
   value:  # see deterministic_model parameters
     class: DeterministicMixin
     clip_actions: False
     network:
-    - name: features_extractor
-      input: permute(STATES["camera_rgb"], (0, 3, 1, 2)) # TODO: NEED TO PERMUTE IF USING TORCH
-      layers:
-        - conv2d: {out_channels: 32, kernel_size: 8, stride: 4, padding: 0}
-        - conv2d: {out_channels: 64, kernel_size: 4, stride: 2, padding: 0}
-        - conv2d: {out_channels: 64, kernel_size: 4, stride: 2, padding: 0}
-        - flatten
-      activations: relu
-    - name: net
-      input: features_extractor
-      layers: [256, 64]
-      activations: elu
+      - name: position_distance
+        input: concatenate([STATES["target_object_position"], STATES["ee_object_distance"]])
+        layers: [128]
+        activations: elu
+      - name: net
+        input: concatenate([position_distance, STATES["joint_pos"], STATES["joint_vel"], STATES["actions"]])
+        layers: [512, 256, 128, 64]
+        activations: elu
     output: ONE
 
 # Rollout memory
@@ -55,7 +57,7 @@ memory:
 # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html
 agent:
   class: PPO
-  rollouts: 24
+  rollouts: 16
   learning_epochs: 8
   mini_batches: 4
   discount_factor: 0.99
@@ -91,5 +93,5 @@ agent:
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
   class: SequentialTrainer
-  timesteps: 180000
+  timesteps: 110000
   environment_info: log
