@@ -76,8 +76,14 @@ def gripper_contact_reward(
     # Get contact forces from the sensor - use net_forces_w instead of contact_forces
     contact_forces = contact_sensor.data.net_forces_w
     
+    # Flatten the contact forces to ensure consistent shape
+    # contact_forces shape: (num_envs, num_bodies, 3) -> flatten to (num_envs, num_bodies * 3)
+    batch_size = contact_forces.shape[0]
+    contact_forces_flat = contact_forces.view(batch_size, -1)
+    
     # Check if there's significant contact (force magnitude above threshold)
-    contact_magnitude = torch.norm(contact_forces, dim=-1)
+    # Compute norm for each environment across all flattened forces
+    contact_magnitude = torch.norm(contact_forces_flat, dim=-1)
     has_contact = contact_magnitude > contact_threshold
     
     return has_contact.float()
@@ -120,7 +126,14 @@ def successful_grasp_reward(
     
     # Check contact is detected - use net_forces_w instead of contact_forces
     contact_forces = contact_sensor.data.net_forces_w
-    contact_magnitude = torch.norm(contact_forces, dim=-1)
+    
+    # Flatten the contact forces to ensure consistent shape
+    # contact_forces shape: (num_envs, num_bodies, 3) -> flatten to (num_envs, num_bodies * 3)
+    batch_size = contact_forces.shape[0]
+    contact_forces_flat = contact_forces.view(batch_size, -1)
+    
+    # Compute norm for each environment across all flattened forces
+    contact_magnitude = torch.norm(contact_forces_flat, dim=-1)
     has_contact = contact_magnitude > contact_threshold
     
     # Combined reward: both conditions must be met
@@ -147,28 +160,6 @@ def object_ee_distance(
     object_ee_distance = torch.norm(cube_pos_w - ee_w, dim=1)
 
     return 1 - torch.tanh(object_ee_distance / std)
-
-def object_ee_distance_2d(
-    env: ManagerBasedRLEnv,
-    std: float = 0.1,
-    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
-    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
-) -> torch.Tensor:
-    """Reward the agent for reaching the object using tanh-kernel."""
-    # extract the used quantities (to enable type-hinting)
-    object: RigidObject = env.scene[object_cfg.name]
-    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
-    # Target object position: (num_envs, 3)
-    cube_pos_w = object.data.root_pos_w
-    # End-effector position: (num_envs, 3)
-    ee_w = ee_frame.data.target_pos_w[..., 0, :]
-    # Distance of the end-effector to the object: (num_envs,)
-    object_ee_distance = torch.norm(cube_pos_w - ee_w, dim=1)
-    dist = 1 - torch.tanh(object_ee_distance / std)
-    zeros = torch.zeros_like(dist)
-    dist = torch.cat([dist, zeros], dim=-1)
-    print("object_ee_distance_2d output shape:", dist.size())
-    return dist
 
 
 def object_goal_distance(
