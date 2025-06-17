@@ -137,10 +137,8 @@ class RewardsCfg:
 
     lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.02}, weight=25.0)
 
-    # Add gripping rewards
-    gripper_contact = RewTerm(func=mdp.gripper_contact_reward, params={"contact_threshold": 0.1}, weight=3.0)
-    gripper_closing = RewTerm(func=mdp.gripper_closing_reward, params={"target_gripper_pos": 0.1}, weight=1.0)
-    successful_grasp = RewTerm(func=mdp.successful_grasp_reward, params={"gripper_threshold": 0.2, "contact_threshold": 0.1}, weight=5.0)
+    # Add gripping rewards - now using single combined function
+    gripper_reward = RewTerm(func=mdp.gripper_reward, params={"target_gripper_pos": 0.0, "gripper_threshold": 0.15, "contact_threshold": 0.1, "gripper_width_threshold": 0.15}, weight=5.0)
 
     # action penalty
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)

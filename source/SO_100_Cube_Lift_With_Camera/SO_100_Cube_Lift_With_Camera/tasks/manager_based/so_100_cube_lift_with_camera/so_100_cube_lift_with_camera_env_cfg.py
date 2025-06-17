@@ -66,12 +66,12 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
             use_default_offset=True
         )
 
-        # Change from binary to continuous gripper control for finer control
-        self.actions.gripper_action = mdp.JointPositionActionCfg(
+        # Use binary gripper control for simpler and more reliable gripping
+        self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["Gripper"],
-            scale=0.3,  # Smaller scale for finer control
-            use_default_offset=True
+            open_command_expr={"Gripper": 0.5},  # Fully open
+            close_command_expr={"Gripper": 0.0}  # Fully closed
         )
         
         # Set the body name for the end effector

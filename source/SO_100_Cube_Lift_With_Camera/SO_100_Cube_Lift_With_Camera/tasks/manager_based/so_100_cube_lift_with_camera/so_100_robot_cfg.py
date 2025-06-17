@@ -37,7 +37,7 @@ SO100_CFG = ArticulationCfg(
             "Elbow": 0.0,
             "Wrist_Pitch": 0.0,
             "Wrist_Roll": 0.0,
-            "Gripper": 0.3,  # Change from 0.5 to 0.3 (middle position) to make movement more apparent
+            "Gripper": 0.4,  # Change from 0.5 to 0.4 (middle position) to make movement more apparent
         },
         # Set initial joint velocities to zero
         joint_vel={".*": 0.0},

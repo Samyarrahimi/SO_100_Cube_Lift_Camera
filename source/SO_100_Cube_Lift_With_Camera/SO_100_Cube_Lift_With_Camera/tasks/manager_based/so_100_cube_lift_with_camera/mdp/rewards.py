@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from isaaclab.assets import RigidObject
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import FrameTransformer, ContactSensor
-from isaaclab.utils.math import combine_frame_transforms
+from isaaclab.utils.math import combine_frame_transforms, subtract_frame_transforms
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -65,81 +65,88 @@ def object_grasped_on_ground(
     return grasped.float()
 
 
-def gripper_contact_reward(
-    env: ManagerBasedRLEnv, 
-    contact_threshold: float = 0.1,
-    contact_sensor_cfg: SceneEntityCfg = SceneEntityCfg("gripper_contact")
-) -> torch.Tensor:
-    """Reward for detecting contact between gripper and object."""
-    contact_sensor: ContactSensor = env.scene[contact_sensor_cfg.name]
-    
-    # Get contact forces from the sensor - use net_forces_w instead of contact_forces
-    contact_forces = contact_sensor.data.net_forces_w
-    
-    # Flatten the contact forces to ensure consistent shape
-    # contact_forces shape: (num_envs, num_bodies, 3) -> flatten to (num_envs, num_bodies * 3)
-    batch_size = contact_forces.shape[0]
-    contact_forces_flat = contact_forces.view(batch_size, -1)
-    
-    # Check if there's significant contact (force magnitude above threshold)
-    # Compute norm for each environment across all flattened forces
-    contact_magnitude = torch.norm(contact_forces_flat, dim=-1)
-    has_contact = contact_magnitude > contact_threshold
-    
-    return has_contact.float()
-
-
-def gripper_closing_reward(
+def gripper_reward(
     env: ManagerBasedRLEnv,
-    target_gripper_pos: float = 0.1,
-    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    target_gripper_pos: float = 0.0,  # Fully closed for binary actions
+    gripper_threshold: float = 0.15,  # Based on cube size: 0.015m cube + margin = ~0.15 gripper position
+    contact_threshold: float = 0.1,
+    gripper_width_threshold: float = 0.15,  # Width of gripper opening when open
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    contact_sensor_cfg: SceneEntityCfg = SceneEntityCfg("gripper_contact"),
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
 ) -> torch.Tensor:
-    """Reward for closing the gripper when near the object."""
+    """Comprehensive gripper reward that handles both closing and successful grasping.
+    
+    Note: When grasping a cube, the gripper position will be > 0 because the cube
+    physically prevents the gripper from closing to position 0.0.
+    
+    Threshold calculation:
+    - Cube size: 0.015m (1.5cm) per side (DexCube with 0.3 scale)
+    - Gripper position 0.0 = fully closed (no gap)
+    - Gripper position 0.5 = fully open
+    - When grasping 0.015m cube, gripper position ≈ 0.15 (30% of open position)
+    - Threshold set to 0.15 to account for cube blocking + some margin
+    
+    Returns:
+        - Closing reward when gripper is closing and cube is between jaws
+        - Full reward when gripper is closed (or grasping cube), contact detected, and cube is between jaws
+    """
     robot = env.scene[robot_cfg.name]
+    contact_sensor: ContactSensor = env.scene[contact_sensor_cfg.name]
+    object = env.scene[object_cfg.name]
+    ee_frame = env.scene[ee_frame_cfg.name]
     
     # Get gripper joint state
     gripper_index = robot.data.joint_names.index("Gripper")
     gripper_state = robot.data.joint_pos[:, gripper_index]
     
-    # Reward for being close to target gripper position (closed)
-    gripper_error = torch.abs(gripper_state - target_gripper_pos)
-    reward = torch.exp(-gripper_error * 10.0)  # Exponential reward for being close
+    # Check if cube is between gripper jaws
+    ee_pos_w = ee_frame.data.target_pos_w[..., 0, :]  # (num_envs, 3)
+    ee_rot_w = ee_frame.data.target_rot_w[..., 0, :]  # (num_envs, 4)
+    cube_pos_w = object.data.root_pos_w  # (num_envs, 3)
     
-    return reward
-
-
-def successful_grasp_reward(
-    env: ManagerBasedRLEnv,
-    gripper_threshold: float = 0.2,
-    contact_threshold: float = 0.1,
-    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
-    contact_sensor_cfg: SceneEntityCfg = SceneEntityCfg("gripper_contact")
-) -> torch.Tensor:
-    """Combined reward for successful grasping (gripper closed + contact detected)."""
-    robot = env.scene[robot_cfg.name]
-    contact_sensor: ContactSensor = env.scene[contact_sensor_cfg.name]
+    # Calculate relative position of cube in end-effector frame
+    cube_pos_ee, _ = subtract_frame_transforms(ee_pos_w, ee_rot_w, cube_pos_w)
     
-    # Check gripper is closed
-    gripper_index = robot.data.joint_names.index("Gripper")
-    gripper_state = robot.data.joint_pos[:, gripper_index]
-    gripper_closed = gripper_state < gripper_threshold
+    # Check if cube is between gripper jaws
+    cube_in_gripper_y = torch.abs(cube_pos_ee[:, 1]) < gripper_width_threshold / 2  # Within gripper width
+    cube_in_gripper_x = torch.abs(cube_pos_ee[:, 0]) < 0.05  # Close to gripper center in X
+    cube_in_gripper_z = torch.abs(cube_pos_ee[:, 2]) < 0.05  # Close to gripper center in Z
     
-    # Check contact is detected - use net_forces_w instead of contact_forces
+    # Cube is properly positioned between gripper jaws
+    cube_between_jaws = cube_in_gripper_y & cube_in_gripper_x & cube_in_gripper_z
+    
+    # Check contact is detected
     contact_forces = contact_sensor.data.net_forces_w
-    
-    # Flatten the contact forces to ensure consistent shape
-    # contact_forces shape: (num_envs, num_bodies, 3) -> flatten to (num_envs, num_bodies * 3)
     batch_size = contact_forces.shape[0]
     contact_forces_flat = contact_forces.view(batch_size, -1)
-    
-    # Compute norm for each environment across all flattened forces
     contact_magnitude = torch.norm(contact_forces_flat, dim=-1)
     has_contact = contact_magnitude > contact_threshold
     
-    # Combined reward: both conditions must be met
-    successful_grasp = gripper_closed & has_contact
+    # Check gripper states - account for cube blocking gripper closure
+    # When grasping a cube, gripper_state will be > 0 due to physics
+    gripper_closed_or_grasping = gripper_state < gripper_threshold
     
-    return successful_grasp.float()
+    # Reward for being close to target position (0.0) when not grasping
+    # When grasping, we care more about contact than exact position
+    gripper_error = torch.abs(gripper_state - target_gripper_pos)
+    closing_reward = torch.exp(-gripper_error * 10.0)  # Exponential reward for being close to closed
+    
+    # Combined reward logic
+    # 1. If gripper is closed/grasping + contact + cube between jaws = full reward (1.0)
+    # 2. If gripper is closing + cube between jaws = partial reward (closing_reward)
+    # 3. If gripper is closed but empty = NO REWARD (0.0)
+    # 4. Otherwise = no reward (0.0)
+    
+    successful_grasp = gripper_closed_or_grasping & has_contact & cube_between_jaws
+    closing_with_cube = cube_between_jaws & ~gripper_closed_or_grasping  # Closing but not yet grasping
+    
+    # Final reward: full reward for successful grasp, partial reward for closing with cube
+    # NO reward for closed but empty gripper
+    final_reward = successful_grasp.float() + (closing_reward * closing_with_cube.float())
+    
+    return final_reward
 
 
 def object_ee_distance(
