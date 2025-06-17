@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from isaaclab.assets import RigidObject
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.sensors import FrameTransformer
+from isaaclab.sensors import FrameTransformer, ContactSensor
 from isaaclab.utils.math import combine_frame_transforms
 
 if TYPE_CHECKING:
@@ -63,6 +63,70 @@ def object_grasped_on_ground(
     grasped = (z < height_threshold) & (gripper_state < gripper_threshold)
 
     return grasped.float()
+
+
+def gripper_contact_reward(
+    env: ManagerBasedRLEnv, 
+    contact_threshold: float = 0.1,
+    contact_sensor_cfg: SceneEntityCfg = SceneEntityCfg("gripper_contact")
+) -> torch.Tensor:
+    """Reward for detecting contact between gripper and object."""
+    contact_sensor: ContactSensor = env.scene[contact_sensor_cfg.name]
+    
+    # Get contact forces from the sensor
+    contact_forces = contact_sensor.data.contact_forces
+    
+    # Check if there's significant contact (force magnitude above threshold)
+    contact_magnitude = torch.norm(contact_forces, dim=-1)
+    has_contact = contact_magnitude > contact_threshold
+    
+    return has_contact.float()
+
+
+def gripper_closing_reward(
+    env: ManagerBasedRLEnv,
+    target_gripper_pos: float = 0.1,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+    """Reward for closing the gripper when near the object."""
+    robot = env.scene[robot_cfg.name]
+    
+    # Get gripper joint state
+    gripper_index = robot.data.joint_names.index("Gripper")
+    gripper_state = robot.data.joint_pos[:, gripper_index]
+    
+    # Reward for being close to target gripper position (closed)
+    gripper_error = torch.abs(gripper_state - target_gripper_pos)
+    reward = torch.exp(-gripper_error * 10.0)  # Exponential reward for being close
+    
+    return reward
+
+
+def successful_grasp_reward(
+    env: ManagerBasedRLEnv,
+    gripper_threshold: float = 0.2,
+    contact_threshold: float = 0.1,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    contact_sensor_cfg: SceneEntityCfg = SceneEntityCfg("gripper_contact")
+) -> torch.Tensor:
+    """Combined reward for successful grasping (gripper closed + contact detected)."""
+    robot = env.scene[robot_cfg.name]
+    contact_sensor: ContactSensor = env.scene[contact_sensor_cfg.name]
+    
+    # Check gripper is closed
+    gripper_index = robot.data.joint_names.index("Gripper")
+    gripper_state = robot.data.joint_pos[:, gripper_index]
+    gripper_closed = gripper_state < gripper_threshold
+    
+    # Check contact is detected
+    contact_forces = contact_sensor.data.contact_forces
+    contact_magnitude = torch.norm(contact_forces, dim=-1)
+    has_contact = contact_magnitude > contact_threshold
+    
+    # Combined reward: both conditions must be met
+    successful_grasp = gripper_closed & has_contact
+    
+    return successful_grasp.float()
 
 
 def object_ee_distance(

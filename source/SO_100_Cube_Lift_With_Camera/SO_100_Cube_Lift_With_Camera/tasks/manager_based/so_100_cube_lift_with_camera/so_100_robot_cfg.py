@@ -8,7 +8,6 @@ Configuration for the SO100 5-DOF robot arm.
 """
 
 import os
-import math
 
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
@@ -20,7 +19,7 @@ SO100_USD_PATH = os.path.join(_THIS_SCRIPT_DIR, "asset", "SO_5DOF_ARM100_WITH_CA
 SO100_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=SO100_USD_PATH,
-        activate_contact_sensors=False,  # Adjust based on need
+        activate_contact_sensors=True,  # Enable contact sensors for better gripping
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
             max_depenetration_velocity=5.0,
@@ -88,10 +87,10 @@ SO100_CFG = ArticulationCfg(
         # Gripper moves: Only moving jaw (~0.034kg)
         "gripper": ImplicitActuatorCfg(
             joint_names_expr=["Gripper"],
-            effort_limit=3.0,    # Increased from 1.9 to 2.5 for stronger grip, increased to 3.0
-            velocity_limit_sim=1.5,
-            stiffness=60.0,     # Increased from 25.0 to 60.0 for more reliable closing
-            damping=20.0,       # Increased from 10.0 to 20.0 for stability
+            effort_limit=5.0,    # Increased from 3.0 for stronger grip
+            velocity_limit_sim=2.0,  # Increased from 1.5 for faster gripping
+            stiffness=100.0,    # Increased from 60.0 for more reliable closing
+            damping=30.0,       # Increased from 20.0 for stability
         ),
     },
     # Using default soft limits

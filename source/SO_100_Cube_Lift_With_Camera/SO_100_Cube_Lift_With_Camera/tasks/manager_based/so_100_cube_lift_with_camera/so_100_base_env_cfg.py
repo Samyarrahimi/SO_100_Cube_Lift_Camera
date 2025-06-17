@@ -17,7 +17,7 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
-from isaaclab.sensors import CameraCfg, FrameTransformerCfg
+from isaaclab.sensors import CameraCfg, FrameTransformerCfg, ContactSensorCfg
 from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg, UsdFileCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
@@ -47,6 +47,8 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
     cube_marker: FrameTransformerCfg = MISSING
     # gripper camera: will be populated by agent env cfg
     gripper_camera: CameraCfg = MISSING
+    # gripper contact sensor: will be populated by agent env cfg
+    gripper_contact: ContactSensorCfg = MISSING
 
     # Table
     table = AssetBaseCfg(
@@ -106,6 +108,10 @@ class ObservationsCfg:
         target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
         actions = ObsTerm(func=mdp.last_action)
 
+        # Add gripper-specific observations
+        gripper_state = ObsTerm(func=mdp.gripper_joint_state)
+        gripper_contact_forces = ObsTerm(func=mdp.gripper_contact_forces, params={"contact_sensor_cfg": SceneEntityCfg("gripper_contact")})
+
         #ee_object_distance_2d = ObsTerm(func=mdp.object_ee_distance_2d, params={"std": 0.1})
 
         camera_rgb_features = ObsTerm(func=mdp.image_features, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"rgb"})
@@ -133,6 +139,11 @@ class RewardsCfg:
 
     lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.02}, weight=25.0)
 
+    # Add gripping rewards
+    gripper_contact = RewTerm(func=mdp.gripper_contact_reward, params={"contact_threshold": 0.1}, weight=3.0)
+    gripper_closing = RewTerm(func=mdp.gripper_closing_reward, params={"target_gripper_pos": 0.1}, weight=1.0)
+    successful_grasp = RewTerm(func=mdp.successful_grasp_reward, params={"gripper_threshold": 0.2, "contact_threshold": 0.1}, weight=5.0)
+
     # action penalty
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
 
@@ -140,7 +151,7 @@ class RewardsCfg:
         func=mdp.joint_vel_l2,
         weight=-1e-4,
         params={"asset_cfg": SceneEntityCfg("robot")},
-    )   
+    )
 
 
 @configclass

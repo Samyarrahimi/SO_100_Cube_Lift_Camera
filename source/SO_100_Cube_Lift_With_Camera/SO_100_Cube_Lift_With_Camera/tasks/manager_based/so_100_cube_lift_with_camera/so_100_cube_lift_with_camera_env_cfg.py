@@ -7,7 +7,7 @@ import copy
 import dataclasses
 
 from isaaclab.assets import RigidObjectCfg, ArticulationCfg
-from isaaclab.sensors import FrameTransformerCfg, CameraCfg
+from isaaclab.sensors import FrameTransformerCfg, CameraCfg, ContactSensorCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg
 from isaaclab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
@@ -39,6 +39,16 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
         _robot_cfg.init_state = dataclasses.replace(_robot_cfg.init_state, rot=(0.7071068, 0.0, 0.0, 0.7071068))
         self.scene.robot = _robot_cfg
         
+        # Add gripper contact sensor for better gripping feedback
+        self.scene.gripper_contact = ContactSensorCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper",
+            body_names=["Fixed_Gripper"],
+            history_length=5,
+            track_pose=True,
+            filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
+            debug_vis=True,
+        )
+        
         self.scene.gripper_camera = CameraCfg(
             prim_path="{ENV_REGEX_NS}/Robot/Wrist_Pitch_Roll/Gripper_Camera/Camera_SG2_OX03CC_5200_GMSL2_H60YA",
             update_period=0.1,
@@ -57,12 +67,12 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
             use_default_offset=True
         )
 
-        # Set gripper action with wider range for better visibility
-        self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
+        # Change from binary to continuous gripper control for finer control
+        self.actions.gripper_action = mdp.JointPositionActionCfg(
             asset_name="robot",
             joint_names=["Gripper"],
-            open_command_expr={"Gripper": 0.5},  # Fully open
-            close_command_expr={"Gripper": 0.0}  # Fully closed
+            scale=0.3,  # Smaller scale for finer control
+            use_default_offset=True
         )
         
         # Set the body name for the end effector
@@ -106,7 +116,7 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
             # Updated path for the new USD structure
             prim_path="{ENV_REGEX_NS}/Robot/Base",
             visualizer_cfg=marker_cfg,
-            debug_vis=False, # disable visualization
+            debug_vis=False,  # disable visualization
             target_frames=[
                 FrameTransformerCfg.FrameCfg(
                     # Original path in comments for reference
