@@ -38,11 +38,10 @@ class SO100CubeLiftCameraEnvCfg(SO100LiftCameraEnvCfg):
             _robot_cfg.init_state = ArticulationCfg.InitialStateCfg()
         _robot_cfg.init_state = dataclasses.replace(_robot_cfg.init_state, rot=(0.7071068, 0.0, 0.0, 0.7071068))
         self.scene.robot = _robot_cfg
-        
+
         # Add gripper contact sensor for better gripping feedback
         self.scene.gripper_contact = ContactSensorCfg(
             prim_path="{ENV_REGEX_NS}/Robot/Fixed_Gripper",
-            body_names=["Fixed_Gripper"],
             history_length=5,
             track_pose=True,
             filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
