@@ -73,8 +73,8 @@ def gripper_contact_reward(
     """Reward for detecting contact between gripper and object."""
     contact_sensor: ContactSensor = env.scene[contact_sensor_cfg.name]
     
-    # Get contact forces from the sensor
-    contact_forces = contact_sensor.data.contact_forces
+    # Get contact forces from the sensor - use net_forces_w instead of contact_forces
+    contact_forces = contact_sensor.data.net_forces_w
     
     # Check if there's significant contact (force magnitude above threshold)
     contact_magnitude = torch.norm(contact_forces, dim=-1)
@@ -118,8 +118,8 @@ def successful_grasp_reward(
     gripper_state = robot.data.joint_pos[:, gripper_index]
     gripper_closed = gripper_state < gripper_threshold
     
-    # Check contact is detected
-    contact_forces = contact_sensor.data.contact_forces
+    # Check contact is detected - use net_forces_w instead of contact_forces
+    contact_forces = contact_sensor.data.net_forces_w
     contact_magnitude = torch.norm(contact_forces, dim=-1)
     has_contact = contact_magnitude > contact_threshold
     

@@ -59,8 +59,8 @@ def gripper_contact_forces(
     """Get contact forces from the gripper contact sensor."""
     contact_sensor: ContactSensor = env.scene[contact_sensor_cfg.name]
     
-    # Get contact forces (3D vector)
-    contact_forces = contact_sensor.data.contact_forces
+    # Get contact forces (3D vector) - use net_forces_w instead of contact_forces
+    contact_forces = contact_sensor.data.net_forces_w
     
     # Get contact magnitude
     contact_magnitude = torch.norm(contact_forces, dim=-1, keepdim=True)
