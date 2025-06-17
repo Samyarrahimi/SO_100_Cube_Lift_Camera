@@ -112,10 +112,8 @@ class ObservationsCfg:
         gripper_state = ObsTerm(func=mdp.gripper_joint_state)
         gripper_contact_forces = ObsTerm(func=mdp.gripper_contact_forces, params={"contact_sensor_cfg": SceneEntityCfg("gripper_contact")})
 
-        #ee_object_distance_2d = ObsTerm(func=mdp.object_ee_distance_2d, params={"std": 0.1})
-
-        camera_rgb_features = ObsTerm(func=mdp.image_features, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"rgb"})
-        #camera_depth = ObsTerm(func=mdp.image, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"distance_to_image_plane"})
+        # Camera features - will be flattened to match other observations
+        camera_rgb_features = ObsTerm(func=mdp.image_features, params={"sensor_cfg": SceneEntityCfg("gripper_camera"),"data_type":"rgb"})
 
         def __post_init__(self):
             self.enable_corruption = True

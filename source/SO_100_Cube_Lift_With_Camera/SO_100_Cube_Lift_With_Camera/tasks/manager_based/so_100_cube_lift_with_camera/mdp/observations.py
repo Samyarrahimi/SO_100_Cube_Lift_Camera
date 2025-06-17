@@ -62,10 +62,16 @@ def gripper_contact_forces(
     # Get contact forces (3D vector) - use net_forces_w instead of contact_forces
     contact_forces = contact_sensor.data.net_forces_w
     
+    # Flatten the contact forces to ensure consistent shape
+    # contact_forces shape: (num_envs, num_bodies, 3) -> flatten to (num_envs, num_bodies * 3)
+    batch_size = contact_forces.shape[0]
+    contact_forces_flat = contact_forces.view(batch_size, -1)
+    
     # Get contact magnitude
     contact_magnitude = torch.norm(contact_forces, dim=-1, keepdim=True)
+    contact_magnitude_flat = contact_magnitude.view(batch_size, -1)
     
     # Combine forces and magnitude
-    contact_info = torch.cat([contact_forces, contact_magnitude], dim=-1)
+    contact_info = torch.cat([contact_forces_flat, contact_magnitude_flat], dim=-1)
     
     return contact_info
