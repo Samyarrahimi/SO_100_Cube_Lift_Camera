@@ -102,18 +102,18 @@ class ObservationsCfg:
         """Observations for policy group."""
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
-        # object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
+        object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
         target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
         actions = ObsTerm(func=mdp.last_action)
 
-        ee_object_distance = ObsTerm(func=mdp.object_ee_distance, params={"std": 0.1})
+        #ee_object_distance_2d = ObsTerm(func=mdp.object_ee_distance_2d, params={"std": 0.1})
 
-        camera_rgb = ObsTerm(func=mdp.image, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"rgb"})
+        camera_rgb_features = ObsTerm(func=mdp.image_features, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"rgb"})
         #camera_depth = ObsTerm(func=mdp.image, params={"sensor_cfg":SceneEntityCfg("gripper_camera"),"data_type":"distance_to_image_plane"})
 
         def __post_init__(self):
             self.enable_corruption = True
-            self.concatenate_terms = False
+            self.concatenate_terms = True
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
@@ -125,72 +125,13 @@ class EventCfg:
 
     reset_all = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
 
-    # reset_object_position = EventTerm(
-    #     func=mdp.reset_root_state_uniform,
-    #     mode="reset",
-    #     params={
-    #         "pose_range": {"x": (-0.1, 0.1), "y": (-0.25, 0.25), "z": (0.0, 0.0)},
-    #         "velocity_range": {},
-    #         "asset_cfg": SceneEntityCfg("object", body_names="Object"),
-    #     },
-    # )
-
-# @configclass
-# class RewardsCfg:
-#     """Reward terms for the MDP."""
-#     # Reaching reward with lower weight
-#     reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.05}, weight=5.0)
-
-#     # Reward for grasping the object while it's still on the ground
-#     grasping_on_ground = RewTerm(func=mdp.object_grasped_on_ground, weight=20.0)
-
-#     # Lifting reward with higher weight
-#     #lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.02}, weight=25.0)
-#     lifting_object = RewTerm(func=mdp.lift_height_reward, params={"minimal_height": 0.02, "max_height": 0.15, "scale": 30.0}, weight=1.0)
-
-#     # Action penalty to encourage smooth movements
-#     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
-
-#     # Joint velocity penalty to prevent erratic movements
-#     joint_vel = RewTerm(
-#         func=mdp.joint_vel_l2,
-#         weight=-1e-4,
-#         params={"asset_cfg": SceneEntityCfg("robot")},
-#     )
-# @configclass
-# class RewardsCfg:
-#     """Reward terms for the MDP."""
-#     # Reaching reward with lower weight
-#     reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.05}, weight=2)
-#     # Lifting reward with higher weight
-#     lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.02}, weight=25.0)
-#     # Action penalty to encourage smooth movements
-#     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
-#     # Joint velocity penalty to prevent erratic movements
-#     joint_vel = RewTerm(
-#         func=mdp.joint_vel_l2,
-#         weight=-1e-4,
-#         params={"asset_cfg": SceneEntityCfg("robot")},
-#     )
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
+    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.05}, weight=2.0)
 
-    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.04}, weight=15.0)
-
-    object_goal_tracking = RewTerm(
-        func=mdp.object_goal_distance,
-        params={"std": 0.3, "minimal_height": 0.04, "command_name": "object_pose"},
-        weight=16.0,
-    )
-
-    object_goal_tracking_fine_grained = RewTerm(
-        func=mdp.object_goal_distance,
-        params={"std": 0.05, "minimal_height": 0.04, "command_name": "object_pose"},
-        weight=5.0,
-    )
+    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.02}, weight=25.0)
 
     # action penalty
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
@@ -210,75 +151,25 @@ class TerminationsCfg:
         func=mdp.root_height_below_minimum, params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("object")}
     )
 
-# @configclass
-# class CurriculumCfg:
-# #     """Curriculum terms for the MDP."""
-
-#     # Stage 1: Focus on reaching
-#     # Start with higher reaching reward, then gradually decrease it
-#     reaching_reward = CurrTerm(
-#         func=mdp.modify_reward_weight, 
-#         params={"term_name": "reaching_object", "weight": 1.0, "num_steps": 15000}
-#     )
-
-#     grasping_reward = CurrTerm(
-#         func=mdp.modify_reward_weight,
-#         params={"term_name": "grasping_on_ground", "weight": 2.0, "num_steps": 30000}
-#     )
-
-#     # Stage 2: Transition to lifting
-#     # Start with lower lifting reward, gradually increase to encourage lifting behavior
-#     lifting_reward = CurrTerm(
-#         func=mdp.modify_reward_weight, 
-#         params={"term_name": "lifting_object", "weight": 20.0, "num_steps": 90000}
-#     )
-
-#     # Stage 4: Stabilize the policy
-#     # Gradually increase action penalties to encourage smoother, more stable movements
-#     action_rate = CurrTerm(
-#         func=mdp.modify_reward_weight, 
-#         params={"term_name": "action_rate", "weight": -5e-4, "num_steps": 30000}
-#     )
-
-#     joint_vel = CurrTerm(
-#         func=mdp.modify_reward_weight, 
-#         params={"term_name": "joint_vel", "weight": -5e-4, "num_steps": 30000}
-#     )
-# @configclass
-# class CurriculumCfg:
-#     """Curriculum terms for the MDP."""
-    # Stage 1: Focus on reaching
-    # Start with higher reaching reward, then gradually decrease it
-    # reaching_reward = CurrTerm(
-    #     func=mdp.modify_reward_weight, 
-    #     params={"term_name": "reaching_object", "weight": 1.0, "num_steps": 6000}
-    # )
-    # # Stage 2: Transition to lifting
-    # # Start with lower lifting reward, gradually increase to encourage lifting behavior
-    # lifting_reward = CurrTerm(
-    #     func=mdp.modify_reward_weight, 
-    #     params={"term_name": "lifting_object", "weight": 35.0, "num_steps": 8000}
-    # )
-    # Stage 3: Stabilize the policy
-    # Gradually increase action penalties to encourage smoother, more stable movements
-    # action_rate = CurrTerm(
-    #     func=mdp.modify_reward_weight, 
-    #     params={"term_name": "action_rate", "weight": -5e-4, "num_steps": 12000}
-    # )
-    # joint_vel = CurrTerm(
-    #     func=mdp.modify_reward_weight, 
-    #     params={"term_name": "joint_vel", "weight": -5e-4, "num_steps": 12000}
-    # )
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
+    reaching_reward = CurrTerm(
+        func=mdp.modify_reward_weight, 
+        params={"term_name": "reaching_object", "weight": 1.0, "num_steps": 6000}
+    )
+
+    lifting_reward = CurrTerm(
+        func=mdp.modify_reward_weight, 
+        params={"term_name": "lifting_object", "weight": 20.0, "num_steps": 8000}
+    )
 
     action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -1e-1, "num_steps": 10000}
+        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -5e-4, "num_steps": 12000}
     )
 
     joint_vel = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -1e-1, "num_steps": 10000}
+        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -5e-4, "num_steps": 12000}
     )
 
 ##
@@ -317,7 +208,7 @@ class SO100LiftCameraEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physx.friction_correlation_distance = 0.00625
         
         # Configure camera for closer view during video recording
-        self.viewer.eye = (2.8, -1.2, 0.7)
-        self.viewer.lookat = (-30, 25, 0.1)
+        self.viewer.eye = (1.0, 1.0, 0.8)
+        self.viewer.lookat = (0.5, 0.0, 0.2)
         self.viewer.origin_type = "env"
         self.viewer.env_index = 0
