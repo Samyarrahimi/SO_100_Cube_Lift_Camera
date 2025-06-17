@@ -103,7 +103,7 @@ def gripper_reward(
     
     # Check if cube is between gripper jaws
     ee_pos_w = ee_frame.data.target_pos_w[..., 0, :]  # (num_envs, 3)
-    ee_rot_w = ee_frame.data.target_rot_w[..., 0, :]  # (num_envs, 4)
+    ee_rot_w = ee_frame.data.target_quat_w[..., 0, :]  # (num_envs, 4)
     cube_pos_w = object.data.root_pos_w  # (num_envs, 3)
     
     # Calculate relative position of cube in end-effector frame
