@@ -47,8 +47,6 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
     cube_marker: FrameTransformerCfg = MISSING
     # gripper camera: will be populated by agent env cfg
     gripper_camera: CameraCfg = MISSING
-    # gripper contact sensor: will be populated by agent env cfg
-    gripper_contact: ContactSensorCfg = MISSING
 
     # Table
     table = AssetBaseCfg(
@@ -108,12 +106,8 @@ class ObservationsCfg:
         target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
         actions = ObsTerm(func=mdp.last_action)
 
-        # Add gripper-specific observations
-        gripper_state = ObsTerm(func=mdp.gripper_joint_state)
-        gripper_contact_forces = ObsTerm(func=mdp.gripper_contact_forces, params={"contact_sensor_cfg": SceneEntityCfg("gripper_contact")})
-
         # Camera features - will be flattened to match other observations
-        camera_rgb_features = ObsTerm(func=mdp.image_features, params={"sensor_cfg": SceneEntityCfg("gripper_camera"),"data_type":"rgb"})
+        camera_rgb_features = ObsTerm(func=mdp.image_features, params={"sensor_cfg": SceneEntityCfg("gripper_camera"), "data_type": "rgb", "model_name": "resnet18"})
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -126,19 +120,27 @@ class ObservationsCfg:
 @configclass
 class EventCfg:
     """Configuration for events."""
-
     reset_all = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
 
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.05}, weight=2.0)
+    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
 
-    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.02}, weight=25.0)
+    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.04}, weight=15.0)
 
-    # Add gripping rewards - now using single combined function
-    gripper_reward = RewTerm(func=mdp.gripper_reward, params={"target_gripper_pos": 0.0, "gripper_threshold": 0.15, "contact_threshold": 0.1, "gripper_width_threshold": 0.15}, weight=5.0)
+    object_goal_tracking = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.3, "minimal_height": 0.04, "command_name": "object_pose"},
+        weight=16.0,
+    )
+
+    object_goal_tracking_fine_grained = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.05, "minimal_height": 0.04, "command_name": "object_pose"},
+        weight=5.0,
+    )
 
     # action penalty
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
@@ -148,7 +150,6 @@ class RewardsCfg:
         weight=-1e-4,
         params={"asset_cfg": SceneEntityCfg("robot")},
     )
-
 
 @configclass
 class TerminationsCfg:
@@ -161,22 +162,13 @@ class TerminationsCfg:
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
-    reaching_reward = CurrTerm(
-        func=mdp.modify_reward_weight, 
-        params={"term_name": "reaching_object", "weight": 1.0, "num_steps": 6000}
-    )
-
-    lifting_reward = CurrTerm(
-        func=mdp.modify_reward_weight, 
-        params={"term_name": "lifting_object", "weight": 20.0, "num_steps": 8000}
-    )
 
     action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -5e-4, "num_steps": 12000}
+        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -1e-1, "num_steps": 10000}
     )
 
     joint_vel = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -5e-4, "num_steps": 12000}
+        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -1e-1, "num_steps": 10000}
     )
 
 ##
